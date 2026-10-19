@@ -1,0 +1,54 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios-duplicate-contacts/**'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios-duplicate-contacts
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build unsigned app
+        run: |
+          mkdir -p build
+          xcodebuild \
+            -project DuplicateContacts.xcodeproj \
+            -scheme DuplicateContacts \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/DuplicateContacts.app"
+          test -d "$APP_PATH"
+          mkdir -p unsigned/Payload
+          cp -R "$APP_PATH" unsigned/Payload/
+          cd unsigned
+          zip -qry ../DuplicateContacts-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuplicateContacts-unsigned-ipa
+          path: ios-duplicate-contacts/DuplicateContacts-unsigned.ipa

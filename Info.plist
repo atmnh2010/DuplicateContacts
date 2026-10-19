@@ -2,28 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key>
-    <string>com.omen.duplicatecontacts</string>
-    <key>CFBundleName</key>
-    <string>DuplicateContacts</string>
-    <key>CFBundleDisplayName</key>
-    <string>DuplicateContacts</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>MinimumOSVersion</key>
-    <string>16.0</string>
-    <key>UIDeviceFamily</key>
-    <array>
-        <integer>1</integer>
-        <integer>2</integer>
-    </array>
-
-    <!-- Privacy -->
-    <key>NSContactsUsageDescription</key>
-    <string>This app scans your contacts locally to find duplicate contacts so you can review and delete duplicates on your device. Contacts are never uploaded.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app scans your contacts on this device to find duplicates. Contacts are not uploaded.</string>
 </dict>
 </plist>

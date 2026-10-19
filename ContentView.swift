@@ -1,134 +1,150 @@
-import SwiftUI
 import Contacts
+import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var store = ContactStore()
+    @StateObject private var contactStore = ContactStore()
+    @State private var selectedIDs = Set<String>()
     @State private var showingDeleteConfirmation = false
-    @State private var isLoading = false
-    @State private var alertMessage: String?
+
+    private var selectedContacts: [CNContact] {
+        contactStore.groups.flatMap(\.contacts).filter { selectedIDs.contains($0.identifier) }
+    }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
-                if !store.isAuthorized {
-                    VStack(spacing: 16) {
-                        Text("Contacts permission is required to find duplicates.")
-                            .multilineTextAlignment(.center)
-                        Button("Request Access") {
-                            Task {
-                                await store.requestAccessAndLoad()
-                            }
-                        }
-                    }
-                    .padding()
-                } else if store.duplicateGroups.isEmpty {
-                    VStack {
-                        Text("No duplicate contacts found.")
-                        Button("Rescan") {
-                            Task {
-                                await store.reload()
-                            }
-                        }
-                    }
-                    .padding()
+                if contactStore.isScanning {
+                    ProgressView("Scanning contacts…")
+                } else if contactStore.groups.isEmpty {
+                    ContentUnavailableView(
+                        "No duplicates found",
+                        systemImage: "person.2.slash",
+                        description: Text("Tap Scan to check your contacts on this device.")
+                    )
                 } else {
                     List {
-                        ForEach(store.duplicateGroups) { group in
-                            Section(header: GroupHeaderView(group: group)) {
-                                ForEach(group.contacts) { item in
-                                    ContactRowView(item: item)
+                        ForEach(contactStore.groups) { group in
+                            Section(group.label) {
+                                ForEach(Array(group.contacts.enumerated()), id: \.element.identifier) { index, contact in
+                                    ContactRow(
+                                        contact: contact,
+                                        isPrimary: index == 0,
+                                        isSelected: selectedIDs.contains(contact.identifier)
+                                    ) {
+                                        toggle(contact)
+                                    }
                                 }
                             }
                         }
                     }
-                    .listStyle(InsetGroupedListStyle())
+                    .listStyle(.insetGrouped)
                 }
             }
             .navigationTitle("Duplicate Contacts")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if store.isAuthorized {
-                        Button("Rescan") {
-                            Task {
-                                await store.reload()
-                            }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Scan") {
+                        Task {
+                            selectedIDs.removeAll()
+                            await contactStore.scan()
+                            selectDuplicatesByDefault()
                         }
                     }
+                    .disabled(contactStore.isScanning)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if store.hasSelectableItems {
-                        Button(role: .destructive) {
-                            showingDeleteConfirmation = true
-                        } label: {
-                            Text("Delete Selected")
-                        }
-                        .disabled(!store.hasSelectedItems)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
+                    .disabled(selectedContacts.isEmpty)
                 }
             }
-            .alert(item: $alertMessage) { msg in
-                Alert(title: Text("Error"), message: Text(msg), dismissButton: .default(Text("OK")))
+            .safeAreaInset(edge: .bottom) {
+                if !selectedContacts.isEmpty {
+                    Text("\(selectedContacts.count) selected")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(.thinMaterial)
+                }
+            }
+            .alert("Could not scan contacts", isPresented: errorBinding) {
+                Button("OK", role: .cancel) { contactStore.errorMessage = nil }
+            } message: {
+                Text(contactStore.errorMessage ?? "Unknown error")
             }
             .confirmationDialog(
-                "This will permanently delete the selected contacts from your device. This cannot be undone.",
+                "Delete \(selectedContacts.count) contacts?",
                 isPresented: $showingDeleteConfirmation,
                 titleVisibility: .visible
             ) {
                 Button("Delete", role: .destructive) {
-                    Task {
-                        do {
-                            try await store.deleteSelected()
-                        } catch {
-                            alertMessage = error.localizedDescription
-                        }
+                    do {
+                        try contactStore.delete(selectedContacts)
+                        selectedIDs.removeAll()
+                    } catch {
+                        contactStore.errorMessage = error.localizedDescription
                     }
                 }
                 Button("Cancel", role: .cancel) {}
-            }
-            .onAppear {
-                Task {
-                    await store.requestAccessAndLoad()
-                }
+            } message: {
+                Text("The selected contacts will be removed from this device and synced accounts.")
             }
         }
     }
-}
 
-struct GroupHeaderView: View {
-    @ObservedObject var group: DuplicateGroup
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { contactStore.errorMessage != nil },
+            set: { if !$0 { contactStore.errorMessage = nil } }
+        )
+    }
 
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(group.primaryDisplayName)
-                    .font(.headline)
-                Text("\(group.contacts.count) duplicate(s)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
+    private func toggle(_ contact: CNContact) {
+        if selectedIDs.contains(contact.identifier) {
+            selectedIDs.remove(contact.identifier)
+        } else {
+            selectedIDs.insert(contact.identifier)
         }
-        .padding(.vertical, 4)
+    }
+
+    private func selectDuplicatesByDefault() {
+        selectedIDs = Set(contactStore.groups.flatMap { group in
+            Array(group.contacts.dropFirst()).map(\.identifier)
+        })
     }
 }
 
-struct ContactRowView: View {
-    @ObservedObject var item: ContactItem
+private struct ContactRow: View {
+    let contact: CNContact
+    let isPrimary: Bool
+    let isSelected: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(item.displayName)
-                if let details = item.subtitle {
-                    Text(details).font(.caption).foregroundColor(.secondary)
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? .blue : .secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(CNContactFormatter.string(from: contact, style: .fullName) ?? "Unnamed contact")
+                        .foregroundStyle(.primary)
+                    if let phone = contact.phoneNumbers.first?.value.stringValue {
+                        Text(phone).font(.caption).foregroundStyle(.secondary)
+                    } else if let email = contact.emailAddresses.first?.value as String? {
+                        Text(email).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if isPrimary {
+                    Text("Keep")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
                 }
             }
-            Spacer()
-            Toggle("", isOn: $item.isSelected)
-                .labelsHidden()
-                .accessibilityLabel("Select \(item.displayName)")
-                .disabled(item.isPrimary)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 }

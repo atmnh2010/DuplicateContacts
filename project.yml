@@ -1,0 +1,32 @@
+name: DuplicateContacts
+
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  DuplicateContacts:
+    type: application
+    platform: iOS
+    sources:
+      - DuplicateContactsApp.swift
+      - ContentView.swift
+      - ContactStore.swift
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Duplicate Contacts
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.omen.duplicatecontacts
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: Info.plist
+        SWIFT_EMIT_LOC_STRINGS: "YES"
