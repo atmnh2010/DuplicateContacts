@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'ios-duplicate-contacts/**'
+      - '**.swift'
+      - 'Info.plist'
+      - 'project.yml'
+      - '.github/workflows/build-unsigned-ipa.yml'
 
 jobs:
   build:
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: ios-duplicate-contacts
 
     steps:
       - name: Checkout
@@ -51,4 +51,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DuplicateContacts-unsigned-ipa
-          path: ios-duplicate-contacts/DuplicateContacts-unsigned.ipa
+          path: DuplicateContacts-unsigned.ipa
