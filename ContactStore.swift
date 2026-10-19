@@ -29,9 +29,7 @@ final class ContactStore: ObservableObject {
                 return
             }
             let keys: [CNKeyDescriptor] = [
-                CNContactIdentifierKey as CNKeyDescriptor,
-                CNContactGivenNameKey as CNKeyDescriptor,
-                CNContactFamilyNameKey as CNKeyDescriptor,
+                CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
                 CNContactPhoneNumbersKey as CNKeyDescriptor,
                 CNContactEmailAddressesKey as CNKeyDescriptor
             ]
