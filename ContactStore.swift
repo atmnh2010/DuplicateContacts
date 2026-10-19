@@ -34,7 +34,7 @@ final class ContactStore: ObservableObject {
                 CNContactPhoneNumbersKey as CNKeyDescriptor,
                 CNContactEmailAddressesKey as CNKeyDescriptor
             ]
-            let request = CNFetchRequest(keysToFetch: keys)
+            let request = CNContactFetchRequest(keysToFetch: keys)
             var contacts: [CNContact] = []
             try store.enumerateContacts(with: request) { contact, _ in
                 contacts.append(contact)

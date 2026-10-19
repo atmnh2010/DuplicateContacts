@@ -16,11 +16,18 @@ struct ContentView: View {
                 if contactStore.isScanning {
                     ProgressView("Scanning contacts…")
                 } else if contactStore.groups.isEmpty {
-                    ContentUnavailableView(
-                        "No duplicates found",
-                        systemImage: "person.2.slash",
-                        description: Text("Tap Scan to check your contacts on this device.")
-                    )
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.2.slash")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.secondary)
+                        Text("No duplicates found")
+                            .font(.headline)
+                        Text("Tap Scan to check your contacts on this device.")
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
                 } else {
                     List {
                         ForEach(contactStore.groups) { group in
