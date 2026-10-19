@@ -25,7 +25,8 @@ struct ContentView: View {
                     List {
                         ForEach(contactStore.groups) { group in
                             Section(group.label) {
-                                ForEach(Array(group.contacts.enumerated()), id: \.element.identifier) { index, contact in
+                                ForEach(group.contacts.indices, id: \.self) { index in
+                                    let contact = group.contacts[index]
                                     ContactRow(
                                         contact: contact,
                                         isPrimary: index == 0,
